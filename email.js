@@ -1,7 +1,7 @@
 import { existsSync, open, read, closeSync, close } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
-import { TextEncoder, TextDecoder } from 'util';
+import TextEncoding from 'text-encoding';
 import { createHmac } from 'crypto';
 import { EventEmitter } from 'events';
 import { Socket } from 'net';
@@ -266,8 +266,7 @@ function isRFC2822Date(date) {
     return rfc2822re.test(date);
 }
 
-// adapted from https://github.com/emailjs/emailjs-mime-codec/blob/6909c706b9f09bc0e5c3faf48f723cca53e5b352/src/mimecodec.js
-const encoder = new TextEncoder();
+const encoder = new TextEncoding.TextEncoder();
 /**
  * @see https://tools.ietf.org/html/rfc2045#section-6.7
  */
@@ -383,7 +382,7 @@ function checkRanges(nr) {
  * @return {string} Mime encoded string
  */
 function mimeEncode(data = '', encoding = 'utf-8') {
-    const decoder = new TextDecoder(encoding);
+    const decoder = new TextEncoding.TextDecoder(encoding);
     const buffer = typeof data === 'string'
         ? encoder.encode(data)
         : encoder.encode(decoder.decode(data));
@@ -415,7 +414,7 @@ function mimeEncode(data = '', encoding = 'utf-8') {
  */
 function mimeWordEncode(data, mimeWordEncoding = 'Q', encoding = 'utf-8') {
     let parts = [];
-    const decoder = new TextDecoder(encoding);
+    const decoder = new TextEncoding.TextDecoder(encoding);
     const str = typeof data === 'string' ? data : decoder.decode(data);
     if (mimeWordEncoding === 'Q') {
         const encodedStr = mimeEncode(str, encoding).replace(/[^a-z0-9!*+\-/=]/gi, (chr) => chr === ' '

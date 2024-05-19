@@ -1,7 +1,6 @@
-// adapted from https://github.com/emailjs/emailjs-mime-codec/blob/6909c706b9f09bc0e5c3faf48f723cca53e5b352/src/mimecodec.js
-import { TextDecoder, TextEncoder } from 'util';
+import TextEncoding from 'text-encoding';
 
-const encoder = new TextEncoder();
+const encoder = new TextEncoding.TextEncoder();
 
 /**
  * @see https://tools.ietf.org/html/rfc2045#section-6.7
@@ -144,7 +143,7 @@ function checkRanges(nr: number) {
  * @return {string} Mime encoded string
  */
 export function mimeEncode(data: string | Uint8Array = '', encoding = 'utf-8') {
-	const decoder = new TextDecoder(encoding);
+	const decoder = new TextEncoding.TextDecoder(encoding);
 	const buffer =
 		typeof data === 'string'
 			? encoder.encode(data)
@@ -189,7 +188,7 @@ export function mimeWordEncode(
 	encoding = 'utf-8'
 ) {
 	let parts: string[] = [];
-	const decoder = new TextDecoder(encoding);
+	const decoder = new TextEncoding.TextDecoder(encoding);
 	const str = typeof data === 'string' ? data : decoder.decode(data);
 
 	if (mimeWordEncoding === 'Q') {

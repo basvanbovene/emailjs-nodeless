@@ -21,6 +21,7 @@
 		"@types/mailparser": "3.4.0",
 		"@types/node": "12.12.6",
 		"@types/smtp-server": "3.5.7",
+		"@types/text-encoding": "^0.0.39",
 		"@typescript-eslint/eslint-plugin": "5.21.0",
 		"@typescript-eslint/parser": "5.21.0",
 		"ava": "4.2.0",
@@ -46,9 +47,6 @@
 	"resolutions": {
 		"nodemailer": "6.7.4"
 	},
-	"engines": {
-		"node": ">=12"
-	},
 	"files": [
 		"email.js",
 		"email.ts",
@@ -64,5 +62,8 @@
 		"pretest": "yarn build",
 		"test": "ava"
 	},
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"text-encoding": "^0.7.0"
+	}
 }
