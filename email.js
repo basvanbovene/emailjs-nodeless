@@ -271,10 +271,10 @@ const encoder = new TextEncoding.TextEncoder();
  * @see https://tools.ietf.org/html/rfc2045#section-6.7
  */
 const RANGES = [
-    [0x09],
-    [0x0a],
-    [0x0d],
-    [0x20, 0x3c],
+    [0x09], // <TAB>
+    [0x0a], // <LF>
+    [0x0d], // <CR>
+    [0x20, 0x3c], // <SP>!"#$%&'()*+,-./0123456789:;
     [0x3e, 0x7e], // >?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}
 ];
 const LOOKUP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
