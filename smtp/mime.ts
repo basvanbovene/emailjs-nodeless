@@ -1,6 +1,3 @@
-// adapted from https://github.com/emailjs/emailjs-mime-codec/blob/6909c706b9f09bc0e5c3faf48f723cca53e5b352/src/mimecodec.js
-import { TextDecoder, TextEncoder } from 'util';
-
 const encoder = new TextEncoder();
 
 /**

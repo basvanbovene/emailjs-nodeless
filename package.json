@@ -1,6 +1,6 @@
 {
-	"name": "emailjs",
-	"description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
+	"name": "@basvanbovene/emailjs",
+	"description": "send text/html emails and attachments (files, streams and strings) from js to any smtp server",
 	"version": "4.0.3",
 	"author": "eleith",
 	"contributors": [
@@ -17,9 +17,8 @@
 	"type": "module",
 	"devDependencies": {
 		"@ledge/configs": "23.3.23322",
-		"@rollup/plugin-typescript": "8.3.2",
+		"@rollup/plugin-typescript": "^11.1.6",
 		"@types/mailparser": "3.4.0",
-		"@types/node": "12.12.6",
 		"@types/smtp-server": "3.5.7",
 		"@typescript-eslint/eslint-plugin": "5.21.0",
 		"@typescript-eslint/parser": "5.21.0",
@@ -33,10 +32,10 @@
 		"smtp-server": "3.11.0",
 		"ts-node": "10.9.1",
 		"tslib": "2.4.0",
-		"typescript": "4.3.5"
+		"typescript": "5.4.5"
 	},
 	"peerDependencies": {
-		"typescript": ">=4.3.5"
+		"typescript": ">=5.0.0"
 	},
 	"peerDependenciesMeta": {
 		"typescript": {
@@ -45,9 +44,6 @@
 	},
 	"resolutions": {
 		"nodemailer": "6.7.4"
-	},
-	"engines": {
-		"node": ">=12"
 	},
 	"files": [
 		"email.js",

@@ -342,8 +342,19 @@ test('client only responds once to greylisting', async (t) => {
 });
 
 test('client send can have result awaited when promisified', async (t) => {
-	// bind necessary to retain internal access to client prototype
-	const sendAsync = promisify(client.send.bind(client));
+	async function sendEmail<T extends Message | MessageHeaders>(
+		message: T
+	): Promise<T> {
+		return new Promise<T>((resolve, reject) => {
+			client.send(message, (err, message) => {
+				if (err) {
+					reject(err);
+				} else {
+					resolve(message as unknown as T);
+				}
+			});
+		});
+	}
 
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
@@ -353,7 +364,8 @@ test('client send can have result awaited when promisified', async (t) => {
 	};
 
 	try {
-		const message = (await sendAsync(new Message(msg))) as Message;
+		const message = await sendEmail(new Message(msg));
+		// Your assertions here
 		t.true(message instanceof Message);
 		t.like(message, {
 			alternative: null,

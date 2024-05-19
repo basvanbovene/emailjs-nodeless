@@ -1,7 +1,6 @@
 import { existsSync, open, read, closeSync, close } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
-import { TextEncoder, TextDecoder } from 'util';
 import { createHmac } from 'crypto';
 import { EventEmitter } from 'events';
 import { Socket } from 'net';
@@ -32,17 +31,16 @@ const OPERATORS = new Map([
  * @return {AddressToken[]} An array of operator|text tokens
  */
 function tokenizeAddress(address = '') {
-    var _a, _b;
     const tokens = [];
     let token = undefined;
     let operator = undefined;
     for (const character of address.toString()) {
-        if (((_a = operator === null || operator === void 0 ? void 0 : operator.length) !== null && _a !== void 0 ? _a : 0) > 0 && character === operator) {
+        if ((operator?.length ?? 0) > 0 && character === operator) {
             tokens.push({ type: 'operator', value: character });
             token = undefined;
             operator = undefined;
         }
-        else if (((_b = operator === null || operator === void 0 ? void 0 : operator.length) !== null && _b !== void 0 ? _b : 0) === 0 && OPERATORS.has(character)) {
+        else if ((operator?.length ?? 0) === 0 && OPERATORS.has(character)) {
             tokens.push({ type: 'operator', value: character });
             token = undefined;
             operator = OPERATORS.get(character);
@@ -266,16 +264,15 @@ function isRFC2822Date(date) {
     return rfc2822re.test(date);
 }
 
-// adapted from https://github.com/emailjs/emailjs-mime-codec/blob/6909c706b9f09bc0e5c3faf48f723cca53e5b352/src/mimecodec.js
 const encoder = new TextEncoder();
 /**
  * @see https://tools.ietf.org/html/rfc2045#section-6.7
  */
 const RANGES = [
-    [0x09],
-    [0x0a],
-    [0x0d],
-    [0x20, 0x3c],
+    [0x09], // <TAB>
+    [0x0a], // <LF>
+    [0x0d], // <CR>
+    [0x20, 0x3c], // <SP>!"#$%&'()*+,-./0123456789:;
     [0x3e, 0x7e], // >?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}
 ];
 const LOOKUP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
@@ -490,6 +487,14 @@ function convertDashDelimitedTextToSnakeCase(text) {
         .replace(/^(.)|-(.)/g, (match) => match.toUpperCase());
 }
 class Message {
+    attachments = [];
+    header = {
+        'message-id': `<${new Date().getTime()}.${counter++}.${process.pid}@${hostname()}>`,
+        date: getRFC2822Date(),
+    };
+    content = 'text/plain; charset=utf-8';
+    text;
+    alternative = null;
     /**
      * Construct an rfc2822-compliant message object.
      *
@@ -502,13 +507,6 @@ class Message {
      * @param {Partial<MessageHeaders>} headers Message headers
      */
     constructor(headers) {
-        this.attachments = [];
-        this.header = {
-            'message-id': `<${new Date().getTime()}.${counter++}.${process.pid}@${hostname()}>`,
-            date: getRFC2822Date(),
-        };
-        this.content = 'text/plain; charset=utf-8';
-        this.alternative = null;
         for (const header in headers) {
             // allow user to override default content-type to override charset or send a single non-text message
             if (/^content-type$/i.test(header)) {
@@ -653,16 +651,17 @@ class Message {
     }
 }
 class MessageStream extends Stream {
+    message;
+    readable = true;
+    paused = false;
+    buffer = Buffer.alloc(MIMECHUNK * 24 * 7);
+    bufferIndex = 0;
     /**
      * @param {Message} message the message to stream
      */
     constructor(message) {
         super();
         this.message = message;
-        this.readable = true;
-        this.paused = false;
-        this.buffer = Buffer.alloc(MIMECHUNK * 24 * 7);
-        this.bufferIndex = 0;
         /**
          * @param {string} [data] the data to output
          * @param {Function} [callback] the function
@@ -751,10 +750,9 @@ class MessageStream extends Stream {
             }
         };
         const outputFile = (attachment, next) => {
-            var _a;
             const chunk = MIME64CHUNK * 16;
             const buffer = Buffer.alloc(chunk);
-            const inputEncoding = ((_a = attachment === null || attachment === void 0 ? void 0 : attachment.headers) === null || _a === void 0 ? void 0 : _a['content-transfer-encoding']) || 'base64';
+            const inputEncoding = attachment?.headers?.['content-transfer-encoding'] || 'base64';
             const encoding = inputEncoding === '7bit'
                 ? 'ascii'
                 : inputEncoding === '8bit'
@@ -799,7 +797,7 @@ class MessageStream extends Stream {
          */
         const outputStream = (attachment, callback) => {
             const { stream } = attachment;
-            if (stream === null || stream === void 0 ? void 0 : stream.readable) {
+            if (stream?.readable) {
                 let previous = Buffer.alloc(0);
                 stream.resume();
                 stream.on('end', () => {
@@ -881,10 +879,9 @@ class MessageStream extends Stream {
          * @returns {void}
          */
         const outputData = (attachment, callback) => {
-            var _a, _b;
             outputBase64(attachment.encoded
-                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : ''
-                : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
+                ? attachment.data ?? ''
+                : Buffer.from(attachment.data ?? '').toString('base64'), callback);
         };
         /**
          * @param {Message} message the message to output
@@ -912,8 +909,7 @@ class MessageStream extends Stream {
             const boundary = generateBoundary();
             output(`Content-Type: multipart/related; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`);
             outputAttachment(message, () => {
-                var _a;
-                outputMessage(boundary, (_a = message.related) !== null && _a !== void 0 ? _a : [], 0, () => {
+                outputMessage(boundary, message.related ?? [], 0, () => {
                     output(`${CRLF$1}--${boundary}--${CRLF$1}${CRLF$1}`);
                     callback();
                 });
@@ -944,12 +940,11 @@ class MessageStream extends Stream {
             }
         };
         const close$1 = (err) => {
-            var _a, _b;
             if (err) {
                 this.emit('error', err);
             }
             else {
-                this.emit('data', (_b = (_a = this.buffer) === null || _a === void 0 ? void 0 : _a.toString('utf-8', 0, this.bufferIndex)) !== null && _b !== void 0 ? _b : '');
+                this.emit('data', this.buffer?.toString('utf-8', 0, this.bufferIndex) ?? '');
                 this.emit('end');
             }
             this.buffer = null;
@@ -1050,15 +1045,15 @@ const SMTPErrorStates = {
     CONNECTIONAUTH: 10,
 };
 class SMTPError extends Error {
+    code = null;
+    smtp = null;
+    previous = null;
     /**
      * @protected
      * @param {string} message error message
      */
     constructor(message) {
         super(message);
-        this.code = null;
-        this.smtp = null;
-        this.previous = null;
     }
     /**
      *
@@ -1069,7 +1064,7 @@ class SMTPError extends Error {
      * @returns {SMTPError} error
      */
     static create(message, code, error, smtp) {
-        const msg = (error === null || error === void 0 ? void 0 : error.message) ? `${message} (${error.message})` : message;
+        const msg = error?.message ? `${message} (${error.message})` : message;
         const err = new SMTPError(msg);
         err.code = code;
         err.smtp = smtp;
@@ -1081,17 +1076,18 @@ class SMTPError extends Error {
 }
 
 class SMTPResponseMonitor {
+    stop;
     constructor(stream, timeout, onerror) {
         let buffer = '';
         const notify = () => {
-            var _a, _b;
             if (buffer.length) {
                 // parse buffer for response codes
                 const line = buffer.replace('\r', '');
-                if (!((_b = (_a = line
+                if (!(line
                     .trim()
                     .split(/\n/)
-                    .pop()) === null || _a === void 0 ? void 0 : _a.match(/^(\d{3})\s/)) !== null && _b !== void 0 ? _b : false)) {
+                    .pop()
+                    ?.match(/^(\d{3})\s/) ?? false)) {
                     return;
                 }
                 const match = line ? line.match(/(\d+)\s?(.*)/) : null;
@@ -1189,6 +1185,28 @@ const caller = (callback, ...args) => {
     }
 };
 class SMTPConnection extends EventEmitter {
+    user;
+    password;
+    timeout = DEFAULT_TIMEOUT;
+    log = log;
+    authentication = [
+        AUTH_METHODS['CRAM-MD5'],
+        AUTH_METHODS.LOGIN,
+        AUTH_METHODS.PLAIN,
+        AUTH_METHODS.XOAUTH2,
+    ];
+    _state = SMTPState.NOTCONNECTED;
+    _secure = false;
+    loggedin = false;
+    sock = null;
+    features = null;
+    monitor = null;
+    domain = hostname();
+    host = 'localhost';
+    ssl = false;
+    tls = false;
+    port;
+    greylistResponseTracker = new WeakSet();
     /**
      * SMTP class written using python's (2.7) smtplib.py as a base.
      *
@@ -1197,27 +1215,7 @@ class SMTPConnection extends EventEmitter {
      * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
      */
     constructor({ timeout, host, user, password, domain, port, ssl, tls, logger, authentication, } = {}) {
-        var _a;
         super();
-        this.timeout = DEFAULT_TIMEOUT;
-        this.log = log;
-        this.authentication = [
-            AUTH_METHODS['CRAM-MD5'],
-            AUTH_METHODS.LOGIN,
-            AUTH_METHODS.PLAIN,
-            AUTH_METHODS.XOAUTH2,
-        ];
-        this._state = SMTPState.NOTCONNECTED;
-        this._secure = false;
-        this.loggedin = false;
-        this.sock = null;
-        this.features = null;
-        this.monitor = null;
-        this.domain = hostname();
-        this.host = 'localhost';
-        this.ssl = false;
-        this.tls = false;
-        this.greylistResponseTracker = new WeakSet();
         if (Array.isArray(authentication)) {
             this.authentication = authentication;
         }
@@ -1242,7 +1240,7 @@ class SMTPConnection extends EventEmitter {
         }
         this.port = port || (ssl ? SMTP_SSL_PORT : tls ? SMTP_TLS_PORT : SMTP_PORT);
         this.loggedin = user && password ? false : true;
-        if (!user && ((_a = password === null || password === void 0 ? void 0 : password.length) !== null && _a !== void 0 ? _a : 0) > 0) {
+        if (!user && (password?.length ?? 0) > 0) {
             throw new Error('`password` cannot be set without `user`');
         }
         // keep these strings hidden when quicky debugging/logging
@@ -1535,8 +1533,7 @@ class SMTPConnection extends EventEmitter {
      * @returns {boolean} whether the extension exists
      */
     has_extn(opt) {
-        var _a;
-        return ((_a = this.features) !== null && _a !== void 0 ? _a : {})[opt.toLowerCase()] === undefined;
+        return (this.features ?? {})[opt.toLowerCase()] === undefined;
     }
     /**
      * @public
@@ -1604,9 +1601,8 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     message(data) {
-        var _a, _b;
         this.log(data);
-        (_b = (_a = this.sock) === null || _a === void 0 ? void 0 : _a.write(data)) !== null && _b !== void 0 ? _b : this.log('no socket to write to');
+        this.sock?.write(data) ?? this.log('no socket to write to');
     }
     /**
      * @public
@@ -1670,15 +1666,13 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     login(callback, user, password, options = {}) {
-        var _a, _b;
         const login = {
             user: user ? () => user : this.user,
             password: password ? () => password : this.password,
-            method: (_b = (_a = options === null || options === void 0 ? void 0 : options.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) !== null && _b !== void 0 ? _b : '',
+            method: options?.method?.toUpperCase() ?? '',
         };
-        const domain = (options === null || options === void 0 ? void 0 : options.domain) || this.domain;
+        const domain = options?.domain || this.domain;
         const initiate = (err, data) => {
-            var _a;
             if (err) {
                 caller(callback, err);
                 return;
@@ -1707,7 +1701,7 @@ class SMTPConnection extends EventEmitter {
             if (!method) {
                 const preferred = this.authentication;
                 let auth = '';
-                if (typeof ((_a = this.features) === null || _a === void 0 ? void 0 : _a['auth']) === 'string') {
+                if (typeof this.features?.['auth'] === 'string') {
                     auth = this.features['auth'];
                 }
                 for (let i = 0; i < preferred.length; i++) {
@@ -1838,6 +1832,11 @@ class SMTPConnection extends EventEmitter {
 }
 
 class SMTPClient {
+    smtp;
+    queue = [];
+    sending = false;
+    ready = false;
+    timer = null;
     /**
      * Create a standard SMTP client backed by a self-managed SMTP connection.
      *
@@ -1846,10 +1845,6 @@ class SMTPClient {
      * @param {SMTPConnectionOptions} server smtp options
      */
     constructor(server) {
-        this.queue = [];
-        this.sending = false;
-        this.ready = false;
-        this.timer = null;
         this.smtp = new SMTPConnection(server);
     }
     /**
@@ -2076,11 +2071,10 @@ class SMTPClient {
      * @returns {void}
      */
     _sendrcpt(stack) {
-        var _a;
         if (stack.to == null || typeof stack.to === 'string') {
             throw new TypeError('stack.to must be array');
         }
-        const to = (_a = stack.to.shift()) === null || _a === void 0 ? void 0 : _a.address;
+        const to = stack.to.shift()?.address;
         this.smtp.rcpt(this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata), `<${to}>`);
     }
     /**
